@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flappy Bird - AI Learning</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <div class="game-header">
+            <h1>🐦 Flappy Bird AI</h1>
+            
+            <div class="controls-wrapper">
+                <div class="control-group">
+                    <button id="startBtn">🎮 Play</button>
+                    <button id="aiBtn">🤖 Train AI</button>
+                    <button id="aiPlayBtn">🎯 Watch AI</button>
+                    <button id="stopBtn">Stop</button>
+                </div>
+                <div class="control-group secondary">
+                    <button id="saveBtn">💾 Save</button>
+                    <button id="loadBtn">📂 Load</button>
+                    <button id="clearBtn">🔄 Reset</button>
+                    <input type="file" id="fileInput" accept=".json" style="display: none;">
+                    <label class="fast-mode-toggle">
+                        <input type="checkbox" id="fastMode">
+                        <span>⚡ Fast Mode</span>
+                    </label>
+                </div>
+            </div>
+            
+            <div class="stats-container">
+                <div class="stat-card">
+                    <span class="stat-label">Score</span>
+                    <span class="stat-value" id="score">0</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-label">Best</span>
+                    <span class="stat-value" id="highScore">0</span>
+                </div>
+                <div id="aiStats" class="ai-stats-group" style="display: none;">
+                    <div class="stat-card">
+                        <span class="stat-label">Gen</span>
+                        <span class="stat-value" id="generation">1</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-label">AI Best</span>
+                        <span class="stat-value" id="bestScore">0</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-label">Alive</span>
+                        <span class="stat-value" id="alive">0</span>
+                    </div>
+                </div>
+            </div>
+            <div id="saveStatus" class="save-status"></div>
+        </div>
+        
+        <canvas id="gameCanvas"></canvas>
+        
+        <div id="instructions">
+            <p>Press <strong>ENTER</strong> to start • Press <strong>SPACE</strong> or <strong>CLICK</strong> to flap • Train AI to learn automatically • Save/Load your best models</p>
+        </div>
+    </div>
+    <script src="neural-network.js"></script>
+    <script src="game.js"></script>
+    <script src="ai.js"></script>
+    <script src="main.js"></script>
+</body>
+</html>
+
