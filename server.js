@@ -27,20 +27,32 @@ app.get('/api/latest-ai-data', async (req, res) => {
             return res.json({ success: false, message: 'No AI data files found' });
         }
         
-        // Get file stats to find the latest one
+        // Get file stats and extract scores from filenames
         const filesWithStats = await Promise.all(
             files.map(async (file) => {
                 const stats = await fs.stat(file);
+                const filename = path.basename(file);
+                
+                // Extract score from filename pattern: "flappy-bird-ai-gen30-score101378.json"
+                const scoreMatch = filename.match(/score(\d+)/);
+                const score = scoreMatch ? parseInt(scoreMatch[1], 10) : 0;
+                
                 return {
                     path: file,
                     mtime: stats.mtime,
-                    name: path.basename(file)
+                    name: filename,
+                    score: score
                 };
             })
         );
         
-        // Sort by modification time (newest first)
-        filesWithStats.sort((a, b) => b.mtime - a.mtime);
+        // Sort by score (highest first), then by mtime as fallback
+        filesWithStats.sort((a, b) => {
+            if (b.score !== a.score) {
+                return b.score - a.score;
+            }
+            return b.mtime - a.mtime;
+        });
         
         const latestFile = filesWithStats[0];
         
