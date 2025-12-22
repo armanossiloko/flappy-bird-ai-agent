@@ -1,12 +1,21 @@
 // AI Agent with Genetic Algorithm
 class AIAgent {
-    constructor(game, populationSize = 50) {
+    constructor(game, populationSize = 50, callbacks = {}) {
         this.game = game;
         this.populationSize = populationSize;
         this.population = [];
         this.generation = 1;
         this.bestScore = 0;
         this.bestBird = null;
+        
+        // Callbacks for UI communication (separated from agent logic)
+        this.callbacks = {
+            onStatsUpdate: callbacks.onStatsUpdate || (() => {}), // (aliveCount, generation, bestScore, maxScore)
+            onScoreUpdate: callbacks.onScoreUpdate || (() => {}), // (score)
+            onBestScoreUpdate: callbacks.onBestScoreUpdate || (() => {}), // (bestScore)
+            onSaveStatusUpdate: callbacks.onSaveStatusUpdate || (() => {}), // (status, loaded)
+            onNotification: callbacks.onNotification || (() => {}) // (message, type)
+        };
         
         // File-based loading is now manual via loadFromFile()
         
@@ -119,8 +128,8 @@ class AIAgent {
             // Update the visual game directly
             this.game.update();
             
-            // Update score display
-            document.getElementById('score').textContent = this.game.score;
+            // Notify UI layer of score update (separated from agent logic)
+            this.callbacks.onScoreUpdate(this.game.score);
             
             // Check if dead
             if (this.game.gameOver) {
@@ -134,17 +143,9 @@ class AIAgent {
                     this.bestBird = this.playBird.brain.copy();
                     console.log(`New best score in Watch AI: ${this.bestScore}`);
                     
-                    // Show notification
-                    const saveStatus = document.getElementById('saveStatus');
-                    if (saveStatus) {
-                        saveStatus.textContent = `New Best: ${this.bestScore}!`;
-                        saveStatus.style.color = '#28a745';
-                        setTimeout(() => {
-                            if (saveStatus) {
-                                saveStatus.textContent = '';
-                            }
-                        }, 3000);
-                    }
+                    // Notify UI layer (separated from agent logic)
+                    this.callbacks.onBestScoreUpdate(this.bestScore);
+                    this.callbacks.onSaveStatusUpdate(`New Best: ${this.bestScore}!`, false);
                 }
                 
                 // Optionally restart automatically
@@ -460,10 +461,8 @@ class AIAgent {
     }
     
     updateStats(aliveCount, maxScore) {
-        document.getElementById('alive').textContent = aliveCount;
-        document.getElementById('generation').textContent = this.generation;
-        document.getElementById('bestScore').textContent = this.bestScore;
-        document.getElementById('score').textContent = maxScore;
+        // Notify UI layer of stats update (separated from agent logic)
+        this.callbacks.onStatsUpdate(aliveCount, this.generation, this.bestScore, maxScore);
     }
     
     setFastMode(enabled) {
@@ -505,16 +504,9 @@ class AIAgent {
             // Create JSON string
             const jsonString = JSON.stringify(saveData, null, 2);
             
-            // Create blob and download link
-            const blob = new Blob([jsonString], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = `flappy-bird-ai-gen${this.generation}-score${this.bestScore}.json`;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            URL.revokeObjectURL(url);
+            // Use callback for file download (separated from agent logic)
+            // The callback handles browser-specific file download operations
+            this.callbacks.onFileSave?.(jsonString, `flappy-bird-ai-gen${this.generation}-score${this.bestScore}.json`);
             
             console.log('AI knowledge saved to file successfully');
             this.updateSaveStatus(true);
@@ -522,7 +514,7 @@ class AIAgent {
         } catch (error) {
             console.error('Error saving AI knowledge to file:', error);
             this.updateSaveStatus(false);
-            alert('Error saving file: ' + error.message);
+            this.callbacks.onNotification?.(`Error saving file: ${error.message}`, 'error');
             return false;
         }
     }
@@ -641,26 +633,17 @@ class AIAgent {
         console.log('AI knowledge cleared - reset to initial state');
     }
     
-    // Update UI to show save status
+    // Update UI to show save status (via callback, separated from agent logic)
     updateSaveStatus(saved, loaded = false) {
-        const statusElement = document.getElementById('saveStatus');
-        if (statusElement) {
-            if (loaded) {
-                statusElement.textContent = `Loaded from Generation ${this.generation}`;
-                statusElement.style.color = '#28a745';
-            } else if (saved) {
-                statusElement.textContent = 'Saved';
-                statusElement.style.color = '#28a745';
-                setTimeout(() => {
-                    if (statusElement) {
-                        statusElement.textContent = '';
-                    }
-                }, 2000);
-            } else {
-                statusElement.textContent = 'No saved data';
-                statusElement.style.color = '#666';
-            }
+        let statusText = '';
+        if (loaded) {
+            statusText = `Loaded from Generation ${this.generation}`;
+        } else if (saved) {
+            statusText = 'Saved';
+        } else {
+            statusText = 'No saved data';
         }
+        this.callbacks.onSaveStatusUpdate(statusText, loaded);
     }
 }
 

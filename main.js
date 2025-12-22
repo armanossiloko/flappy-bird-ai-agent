@@ -7,7 +7,64 @@ let currentMode = null; // 'human', 'ai', or 'ai-play'
 function init() {
     const canvas = document.getElementById('gameCanvas');
     game = new Game(canvas);
-    aiAgent = new AIAgent(game);
+    
+    // Create AI trainer with callbacks for UI updates (separated from agent logic)
+    aiAgent = new AITrainer(game, 50, {
+        onStatsUpdate: (aliveCount, generation, bestScore, maxScore) => {
+            // Update UI stats (UI layer handles DOM manipulation)
+            document.getElementById('alive').textContent = aliveCount;
+            document.getElementById('generation').textContent = generation;
+            document.getElementById('bestScore').textContent = bestScore;
+            document.getElementById('score').textContent = maxScore;
+        },
+        onScoreUpdate: (score) => {
+            // Update score display (UI layer handles DOM manipulation)
+            document.getElementById('score').textContent = score;
+        },
+        onBestScoreUpdate: (bestScore) => {
+            // Update best score display (UI layer handles DOM manipulation)
+            document.getElementById('bestScore').textContent = bestScore;
+        },
+        onSaveStatusUpdate: (statusText, loaded) => {
+            // Update save status (UI layer handles DOM manipulation)
+            const statusElement = document.getElementById('saveStatus');
+            if (statusElement) {
+                statusElement.textContent = statusText;
+                if (loaded || statusText.includes('Saved') || statusText.includes('New Best')) {
+                    statusElement.style.color = '#28a745';
+                } else if (statusText === 'No saved data') {
+                    statusElement.style.color = '#666';
+                } else {
+                    statusElement.style.color = '#28a745';
+                }
+                
+                // Auto-clear status after delay (only for certain messages)
+                if (statusText === 'Saved' || statusText.includes('New Best')) {
+                    setTimeout(() => {
+                        if (statusElement) {
+                            statusElement.textContent = '';
+                        }
+                    }, statusText.includes('New Best') ? 3000 : 2000);
+                }
+            }
+        },
+        onNotification: (message, type) => {
+            // Show notification (UI layer handles DOM manipulation)
+            showNotification(message, type);
+        },
+        onFileSave: (jsonString, filename) => {
+            // Handle file download (UI layer handles browser-specific operations)
+            const blob = new Blob([jsonString], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        }
+    });
     
     // Auto-load latest AI data from server
     loadLatestAIData();

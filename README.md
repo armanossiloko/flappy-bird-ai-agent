@@ -34,6 +34,24 @@ The AI uses two main techniques:
    - Mutation for genetic diversity (20% rate)
    - Elite preservation (top 10% survive)
 
+### Architecture
+
+The project follows a clean separation of concerns:
+
+- **Game Logic** (`game.js`) - Pure game engine, independent of AI
+- **Agent** (`agent.js`) - Individual AI agent that observes, decides, and acts
+- **Evolution Engine** (`evolution-engine.js`) - Genetic algorithm for evolving agents
+- **AI Trainer** (`ai-trainer.js`) - Coordinates training process using agents and evolution
+- **Neural Network** (`neural-network.js`) - Standalone neural network implementation
+- **UI Controller** (`main.js`) - Handles UI updates via callbacks (separated from agent logic)
+
+This architecture ensures:
+- ✅ Agent logic is separated from UI/web layer
+- ✅ Agent is a continuous process (observe-decide-act), not an endpoint
+- ✅ Game logic is independent of AI/neural network
+- ✅ Neural network is a standalone module
+- ✅ Evolution engine is a separate module
+
 ### Neural Network Inputs
 
 The AI receives 5 normalized inputs about the game state:
@@ -105,10 +123,13 @@ The AI receives 5 normalized inputs about the game state:
 flappy-bird-ai-agent/
 ├── server.js              # Express server with API endpoints
 ├── index.html             # Main HTML file
-├── main.js                # Application controller with auto-load
-├── game.js                # Flappy Bird game engine
-├── ai.js                  # AI agent with genetic algorithm
-├── neural-network.js      # Neural network implementation
+├── main.js                # UI controller (handles DOM updates via callbacks)
+├── game.js                # Flappy Bird game engine (pure game logic)
+├── agent.js               # Individual AI agent (observe, decide, act)
+├── evolution-engine.js    # Genetic algorithm engine (population, fitness, evolution)
+├── ai-trainer.js          # AI training coordinator (uses Agent + EvolutionEngine)
+├── neural-network.js      # Neural network implementation (standalone module)
+├── ai.js                  # Legacy file (kept for compatibility, not used)
 ├── styles.css             # Styling
 ├── data/                  # Saved AI models (auto-loaded)
 ├── docs/                  # Documentation (Bosnian)
@@ -119,6 +140,22 @@ flappy-bird-ai-agent/
 ├── node_modules/          # Node.js dependencies (auto-generated)
 ├── package.json           # Node.js dependencies configuration
 └── README.md              # This file
+```
+
+### Architecture Overview
+
+```
+main.js (UI Controller)
+    ↓
+AITrainer (Training Coordinator)
+    ↓
+    ├─→ EvolutionEngine (Genetic Algorithm)
+    │       ↓
+    │       └─→ Agent (Individual Agent)
+    │               ↓
+    │               └─→ NeuralNetwork (Brain)
+    │
+    └─→ Game (Game Logic - separate)
 ```
 
 ## 🔧 API Endpoints
@@ -181,6 +218,9 @@ This project demonstrates:
 - How genetic algorithms can evolve solutions through generations
 - The combination of these techniques for game AI
 - Implementation of AI without external libraries or models
+- Clean architecture with separation of concerns
+- Agent-based design patterns (observe-decide-act cycle)
+- Modular code structure for maintainability
 
 ## ⚠️ Disclaimer
 
@@ -198,6 +238,11 @@ This project was developed entirely through interaction with [Cursor](https://cu
 3. Node.js conversion (adding server and auto-load functionality)
 4. UI/UX improvements (modernizing the interface)
 5. Keyboard controls (SPACE key to start/play)
+6. **Architecture refactoring** (separation of concerns):
+   - Separated agent logic from UI/web layer
+   - Created distinct modules: Agent, EvolutionEngine, AITrainer
+   - Ensured agent is a continuous process (observe-decide-act), not an endpoint
+   - Clear distinction between game logic and AI/neural network components
 
 All code was generated through AI prompts, making this a comprehensive example of AI-assisted development.
 

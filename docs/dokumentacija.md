@@ -10,6 +10,8 @@
    - Prompt 4: Poboljšanje korisničkog interfejsa
    - Prompt 5: Pokretanje igre sa SPACE tipkom
    - Prompt 6: Popravka AI Treninga (fitness funkcija i frameCount)
+   - Prompt 7: Odvajanje logike agenta od UI/web sloja
+   - Prompt 8: Jasna distinkcija između Game logike i AI/Neural Network dijela
 4. [Šta je Umjetna Inteligencija?](#šta-je-umjetna-inteligencija)
 5. [Neuralna Mreža - Detaljno Objašnjenje](#neuralna-mreža---detaljno-objašnjenje)
 6. [Genetski Algoritam - Detaljno Objašnjenje](#genetski-algoritam---detaljno-objašnjenje)
@@ -2133,6 +2135,450 @@ calculateFitness(bird) {
     
     return Math.max(0, fitness);
 }
+```
+
+---
+
+### Prompt 7: Odvajanje logike agenta od UI/web sloja
+
+**Korisnikov zahtjev:**
+> "Provjeri workspace i provjeri da li je sljedeće primijenjeno:
+> 
+> - logika agenta bude odvojena od UI / web sloja,
+> - agent ne bude "endpoint koji pozove model", nego proces koji opaža, odlučuje i djeluje kroz vrijeme."
+
+**AI Odgovor:**
+
+AI je identificirao probleme u arhitekturi i izvršio refaktoring:
+
+#### Pronađeni problemi:
+
+1. **UI coupling u agentu**: `AIAgent` direktno manipulira DOM elementima (7+ mjesta)
+2. **Agent je proces, ali nije odvojen od UI sloja**
+
+#### Rješenje:
+
+AI je refaktorirao `AIAgent` da ukloni sve DOM manipulacije i koristi callback sistem za komunikaciju s UI slojem.
+
+**Ključne promjene:**
+
+1. **Uklonjene sve direktne DOM manipulacije** iz `AIAgent` klase:
+   - Uklonjeno `document.getElementById()` za score, stats, save status
+   - Uklonjeno direktno manipuliranje DOM elementima
+   - Preostalo samo `document.createElement('canvas')` za kreiranje game instanci (prihvatljivo)
+
+2. **Dodan callback sistem** za komunikaciju:
+   - `onStatsUpdate` - za ažuriranje statistika
+   - `onScoreUpdate` - za ažuriranje score-a
+   - `onBestScoreUpdate` - za ažuriranje najboljeg score-a
+   - `onSaveStatusUpdate` - za status spremanja
+   - `onNotification` - za notifikacije
+   - `onFileSave` - za spremanje datoteka
+
+3. **UI logika premještena u `main.js`**:
+   - Sve DOM manipulacije su sada u UI kontroleru (`main.js`)
+   - Agent komunicira samo kroz callback funkcije
+   - Čista separacija logike agenta od UI sloja
+
+4. **Agent je kontinuirani proces**:
+   - `updateLoop()` i `playLoop()` su kontinuirane petlje
+   - Agent opaža: `getAIInputs()`
+   - Agent odlučuje: `feedforward()`
+   - Agent djeluje: `flap()` i `update()`
+   - Nije endpoint koji poziva model, već proces koji radi kroz vrijeme
+
+#### Primjer refaktoriranog koda:
+
+```javascript
+// AI Agent with Genetic Algorithm
+class AIAgent {
+    constructor(game, populationSize = 50, callbacks = {}) {
+        this.game = game;
+        this.populationSize = populationSize;
+        this.population = [];
+        this.generation = 1;
+        this.bestScore = 0;
+        this.bestBird = null;
+        
+        // Callbacks for UI communication (separated from agent logic)
+        this.callbacks = {
+            onStatsUpdate: callbacks.onStatsUpdate || (() => {}), // (aliveCount, generation, bestScore, maxScore)
+            onScoreUpdate: callbacks.onScoreUpdate || (() => {}), // (score)
+            onBestScoreUpdate: callbacks.onBestScoreUpdate || (() => {}), // (bestScore)
+            onSaveStatusUpdate: callbacks.onSaveStatusUpdate || (() => {}), // (status, loaded)
+            onNotification: callbacks.onNotification || (() => {}), // (message, type)
+            onFileSave: callbacks.onFileSave || (() => {}) // (jsonString, filename)
+        };
+        
+        // ... rest of constructor
+    }
+    
+    updateStats(aliveCount, maxScore) {
+        // Notify UI layer of stats update (separated from agent logic)
+        this.callbacks.onStatsUpdate(aliveCount, this.generation, this.bestScore, maxScore);
+    }
+    
+    // ... rest of methods use callbacks instead of direct DOM manipulation
+}
+```
+
+#### Rezultat:
+
+- Logika agenta je odvojena od UI/web sloja
+- Agent je proces koji opaža, odlučuje i djeluje kroz vrijeme
+- Komunikacija između slojeva ide kroz callback sistem
+- Kod je modularniji i lakši za održavanje
+
+---
+
+### Prompt 8: Jasna distinkcija između Game logike i AI/Neural Network dijela
+
+**Korisnikov zahtjev:**
+> "I would need a clear distinction between the game and its logic and the AI and neural network portion of the AI agent."
+
+**AI Odgovor:**
+
+AI je analizirao strukturu i kreirao jasnu arhitekturu koja razdvaja logiku igre od AI/neural network dijela.
+
+#### Nova arhitektura:
+
+**1. `agent.js` - Pojedinačni AI agent**
+- `observe()` - opaža stanje igre
+- `decide()` - odlučuje koristeći neural network
+- `act()` - djeluje na igru
+- `step()` - cijeli ciklus observe-decide-act
+- `calculateFitness()` - računa fitness
+- Ne ovisi o Game klasi (koristi interface)
+
+**2. `evolution-engine.js` - Genetski algoritam**
+- Upravlja populacijom agenata
+- Evoluira populaciju (crossover, mutation, selection)
+- Računa fitness
+- Ne ovisi o Game klasi
+
+**3. `ai-trainer.js` - Koordinira training proces**
+- Koristi `EvolutionEngine` za evoluciju
+- Koristi `Agent` za pojedinačne agente
+- Upravlja game instancama
+- Komunicira s UI kroz callbacks
+- Ne ovisi direktno o neural network implementaciji
+
+**4. `game.js` - Čista logika igre**
+- `getAIInputs()` - interface za AI (može ostati za kompatibilnost)
+- Ne ovisi o AI/Neural Network dijelu
+
+**5. `neural-network.js` - Neural network implementacija**
+- Potpuno odvojen od Game logike
+
+#### Struktura ovisnosti:
+
+```
+main.js (UI Controller)
+    ↓
+AITrainer (Training Coordinator)
+    ↓
+    ├─→ EvolutionEngine (Genetic Algorithm)
+    │       ↓
+    │       └─→ Agent (Individual Agent)
+    │               ↓
+    │               └─→ NeuralNetwork (Brain)
+    │
+    └─→ Game (Game Logic - separate)
+```
+
+#### Primjer nove strukture:
+
+**`agent.js` - Individual AI Agent:**
+
+```javascript
+// Individual AI Agent - observes, decides, and acts
+class Agent {
+    constructor(brain = null) {
+        // Neural network brain (if null, will be created)
+        this.brain = brain || new NeuralNetwork(5, 8, 1);
+        
+        // Agent state
+        this.alive = true;
+        this.score = 0;
+        this.fitness = 0;
+    }
+    
+    /**
+     * Observe the game state and convert it to neural network inputs
+     * @param {Game} game - The game instance to observe
+     * @returns {Array<number>} Normalized input array for neural network
+     */
+    observe(game) {
+        // Extract game state
+        const playableHeight = game.height - game.groundHeight;
+        const bird = game.bird;
+        const nextPipe = game.nextPipe;
+        
+        // Normalize pipe information
+        const distanceToPipe = (nextPipe.x - bird.x) / game.width;
+        const normalizedTop = nextPipe.topHeight / playableHeight;
+        const normalizedBottom = nextPipe.bottomY / playableHeight;
+        
+        return [
+            bird.y / playableHeight,            // Bird Y position (0-1)
+            bird.velocity / 20,                 // Bird velocity (normalized)
+            distanceToPipe,                     // Distance to pipe (0-1)
+            normalizedTop,                      // Pipe top height (0-1)
+            normalizedBottom                     // Pipe bottom Y (0-1)
+        ];
+    }
+    
+    /**
+     * Decide on an action based on observed state
+     * @param {Array<number>} inputs - Normalized game state inputs
+     * @returns {boolean} True if agent decides to flap, false otherwise
+     */
+    decide(inputs) {
+        const output = this.brain.feedforward(inputs);
+        // If output > 0.5, decide to flap
+        return output[0] > 0.5;
+    }
+    
+    /**
+     * Act on the game based on decision
+     * @param {Game} game - The game instance to act upon
+     * @param {boolean} shouldFlap - Whether to flap or not
+     */
+    act(game, shouldFlap) {
+        if (shouldFlap) {
+            game.flap();
+        }
+    }
+    
+    /**
+     * Complete observe-decide-act cycle
+     * @param {Game} game - The game instance
+     * @returns {boolean} True if agent decided to flap
+     */
+    step(game) {
+        const inputs = this.observe(game);
+        const decision = this.decide(inputs);
+        this.act(game, decision);
+        return decision;
+    }
+    
+    // ... rest of methods
+}
+```
+
+**`evolution-engine.js` - Evolution Engine:**
+
+```javascript
+// Evolution Engine - Genetic Algorithm for evolving agents
+class EvolutionEngine {
+    constructor(populationSize = 50) {
+        this.populationSize = populationSize;
+        this.population = [];
+        this.generation = 1;
+        this.bestAgent = null;
+        this.bestScore = 0;
+        
+        // Initialize population with random agents
+        this.initializePopulation();
+    }
+    
+    /**
+     * Evolve population to next generation
+     */
+    evolve() {
+        // Sort population by fitness (best first)
+        this.population.sort((a, b) => b.fitness - a.fitness);
+        
+        // Keep top 10% (elite)
+        const eliteSize = Math.floor(this.populationSize * 0.1);
+        const newPopulation = [];
+        
+        // Add elite agents to new population
+        for (let i = 0; i < eliteSize; i++) {
+            newPopulation.push(this.population[i].copy());
+        }
+        
+        // Generate rest of population through crossover and mutation
+        while (newPopulation.length < this.populationSize) {
+            // Select two parents (tournament selection)
+            const parent1 = this.selectParent();
+            const parent2 = this.selectParent();
+            
+            // Create child through crossover
+            const childBrain = NeuralNetwork.crossover(parent1.brain, parent2.brain);
+            
+            // Mutate child
+            childBrain.mutate(0.2); // 20% mutation rate for good exploration
+            
+            newPopulation.push(new Agent(childBrain));
+        }
+        
+        this.population = newPopulation;
+        this.generation++;
+        
+        // Reset all agents for new generation
+        this.population.forEach(agent => agent.reset());
+    }
+    
+    // ... rest of methods
+}
+```
+
+**`ai-trainer.js` - AI Trainer:**
+
+```javascript
+// AI Trainer - Coordinates training process using EvolutionEngine and Agent classes
+class AITrainer {
+    constructor(visualGame, populationSize = 50, callbacks = {}) {
+        this.visualGame = visualGame; // The visual game instance for display
+        this.populationSize = populationSize;
+        
+        // Evolution engine handles genetic algorithm
+        this.evolutionEngine = new EvolutionEngine(populationSize);
+        
+        // Game instances for each agent (for parallel training)
+        this.agentGames = []; // Array of {agent: Agent, game: Game}
+        
+        // Callbacks for UI communication (separated from training logic)
+        this.callbacks = {
+            onStatsUpdate: callbacks.onStatsUpdate || (() => {}),
+            onScoreUpdate: callbacks.onScoreUpdate || (() => {}),
+            onBestScoreUpdate: callbacks.onBestScoreUpdate || (() => {}),
+            onSaveStatusUpdate: callbacks.onSaveStatusUpdate || (() => {}),
+            onNotification: callbacks.onNotification || (() => {}),
+            onFileSave: callbacks.onFileSave || (() => {})
+        };
+        
+        // Training state
+        this.isRunning = false;
+        this.fastMode = false;
+        this.playMode = false;
+        this.playAgent = null;
+        this.playLoopId = null;
+        this.playLoopRunning = false;
+    }
+    
+    /**
+     * Main training loop
+     */
+    updateLoop() {
+        if (!this.isRunning) return;
+        
+        let allDead = true;
+        let aliveCount = 0;
+        let maxScore = 0;
+        let bestAliveAgent = null;
+        let bestAliveFitness = -1;
+        
+        // Update all agents
+        for (const { agent, game } of this.agentGames) {
+            if (agent.alive) {
+                allDead = false;
+                aliveCount++;
+                
+                // Agent observes, decides, and acts
+                agent.step(game);
+                
+                // Update game
+                game.update();
+                
+                if (game.gameOver) {
+                    agent.alive = false;
+                    agent.score = game.score;
+                    agent.fitness = agent.calculateFitness(game);
+                    
+                    if (agent.score > maxScore) {
+                        maxScore = agent.score;
+                    }
+                } else {
+                    agent.score = game.score;
+                    agent.fitness = agent.calculateFitness(game);
+                    
+                    if (agent.score > maxScore) {
+                        maxScore = agent.score;
+                    }
+                    
+                    // Track best alive agent for visualization
+                    if (agent.fitness > bestAliveFitness) {
+                        bestAliveFitness = agent.fitness;
+                        bestAliveAgent = agent;
+                    }
+                }
+            }
+        }
+        
+        // Update visual game to show best performing alive agent
+        if (bestAliveAgent && bestAliveAgent.alive) {
+            const bestGame = this.agentGames.find(ag => ag.agent === bestAliveAgent)?.game;
+            if (bestGame) {
+                this.syncGameToVisual(bestGame);
+            }
+        }
+        
+        // Evaluate fitness and update stats
+        this.evolutionEngine.evaluateFitness(this.agentGames);
+        this.updateStats(aliveCount, maxScore);
+        
+        // If all dead, evolve to next generation
+        if (allDead) {
+            this.evolutionEngine.evolve();
+            
+            // Initialize next generation
+            const newPopulation = this.evolutionEngine.getPopulation();
+            this.agentGames = newPopulation.map(agent => ({
+                agent: agent,
+                game: this.createGameInstance()
+            }));
+        }
+        
+        // Draw game
+        this.visualGame.draw();
+        
+        // Schedule next frame
+        if (this.isRunning) {
+            if (this.fastMode) {
+                // Fast mode: run multiple updates per frame
+                let fastIterations = 0;
+                while (fastIterations < 5 && this.isRunning) {
+                    let stillAlive = this.fastModeUpdate();
+                    if (!stillAlive) break;
+                    fastIterations++;
+                }
+                requestAnimationFrame(() => this.updateLoop());
+            } else {
+                requestAnimationFrame(() => this.updateLoop());
+            }
+        }
+    }
+    
+    // ... rest of methods
+}
+```
+
+#### Rezultat:
+
+- **Game logika je odvojena od AI/Neural Network dijela**
+- **Agent je proces koji opaža, odlučuje i djeluje kroz vrijeme**
+- **Neural Network je potpuno odvojen modul**
+- **Evolution Engine je odvojen modul za genetski algoritam**
+- **AITrainer koordinira sve, ali ne miješa logiku**
+
+#### Ažurirana struktura fajlova:
+
+```
+index.html
+    ↓
+main.js (UI Controller)
+    ↓
+ai-trainer.js (Training Coordinator)
+    ↓
+    ├─→ evolution-engine.js (Genetic Algorithm)
+    │       ↓
+    │       └─→ agent.js (Individual Agent)
+    │               ↓
+    │               └─→ neural-network.js (Brain)
+    │
+    └─→ game.js (Game Logic - separate)
 ```
 
 ---
