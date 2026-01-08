@@ -42,3 +42,4 @@ build/
 # Optional: Uncomment if you want to exclude AI training data
 # data/
 # *.json
+docs/
